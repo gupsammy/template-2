@@ -2,7 +2,13 @@ import { useState } from "react";
 import { ImageEditorState, MaskData, ImageData } from "@/types/image-editor";
 import ImagePreview from "./ImagePreview";
 import { EDITING_MODELS } from "@/lib/models";
-import { ChevronLeft, ChevronRight, Grid, Maximize } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  LayoutGrid,
+  Maximize2,
+  Download,
+} from "lucide-react";
 
 interface ImageWorkspaceProps {
   state: ImageEditorState;
@@ -26,6 +32,7 @@ export default function ImageWorkspace({
         prev.selectedModel?.type === "editing"
           ? prev.selectedModel
           : EDITING_MODELS[0],
+      viewMode: "single", // Force single view when editing
     }));
   };
 
@@ -49,99 +56,143 @@ export default function ImageWorkspace({
     }));
   };
 
-  // Navigation handlers
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      setCurrentIndex((prev) => prev - 1);
-      if (state.generatedImages[currentIndex - 1]) {
-        handleImageSelect(state.generatedImages[currentIndex - 1]);
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      if (state.generatedImages[newIndex]) {
+        handleImageSelect(state.generatedImages[newIndex]);
       }
     }
   };
 
   const handleNext = () => {
     if (currentIndex < state.generatedImages.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      if (state.generatedImages[currentIndex + 1]) {
-        handleImageSelect(state.generatedImages[currentIndex + 1]);
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      if (state.generatedImages[newIndex]) {
+        handleImageSelect(state.generatedImages[newIndex]);
       }
     }
   };
 
   const toggleViewMode = () => {
+    if (state.editMask) {
+      return; // Don't allow view mode change during edit
+    }
     setState((prev) => ({
       ...prev,
       viewMode: prev.viewMode === "single" ? "grid" : "single",
     }));
   };
 
+  const handleDownload = () => {
+    if (!state.currentImage?.url) return;
+    const link = document.createElement("a");
+    link.href = state.currentImage.url;
+    link.download = `generated-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="flex-1 p-6">
+    <div className="flex-1 p-6 flex flex-col">
       {state.currentImage ? (
-        <div className="relative h-full">
-          {/* View Mode Toggle */}
-          <button
-            onClick={toggleViewMode}
-            className="absolute top-4 right-4 z-10 p-2.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white/100 transition-colors border border-gray-200 flex items-center gap-2"
-          >
-            {state.viewMode === "single" ? (
-              <>
-                <Grid size={18} />
-                <span className="text-sm font-medium">Grid View</span>
-              </>
-            ) : (
-              <>
-                <Maximize size={18} />
-                <span className="text-sm font-medium">Single View</span>
-              </>
-            )}
-          </button>
+        <div className="relative flex-1 min-h-0 flex flex-col">
+          {/* View Mode Toggle and Download */}
+          {!state.editMask && (
+            <div className="flex justify-end gap-2 mb-4">
+              {/* Download Button */}
+              <button
+                onClick={handleDownload}
+                className="p-2.5 bg-white shadow-md rounded-lg hover:bg-gray-50 transition-colors border border-gray-200 flex items-center gap-2 text-gray-700"
+                title="Download Image"
+              >
+                <Download size={18} className="text-gray-700" />
+                <span className="text-sm font-medium">Download</span>
+              </button>
+
+              {/* View Toggle Button */}
+              <button
+                onClick={toggleViewMode}
+                className="p-2.5 bg-white shadow-md rounded-lg hover:bg-gray-50 transition-colors border border-gray-200 flex items-center gap-2 text-gray-700"
+                title={
+                  state.viewMode === "single"
+                    ? "Switch to Grid View"
+                    : "Switch to Single View"
+                }
+              >
+                {state.viewMode === "single" ? (
+                  <>
+                    <LayoutGrid size={18} className="text-gray-700" />
+                    <span className="text-sm font-medium">Grid View</span>
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 size={18} className="text-gray-700" />
+                    <span className="text-sm font-medium">Single View</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
           {state.viewMode === "single" ? (
-            // Single Image View
-            <div className="relative h-full">
-              <ImagePreview
-                image={state.currentImage}
-                mask={state.editMask}
-                onMaskChange={handleMaskChange}
-                viewMode={state.viewMode}
-                onEditStart={handleEditStart}
-                onEditEnd={handleEditEnd}
-              />
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0">
+                <ImagePreview
+                  image={state.currentImage}
+                  mask={state.editMask}
+                  onMaskChange={handleMaskChange}
+                  viewMode={state.viewMode}
+                  onEditStart={handleEditStart}
+                  onEditEnd={handleEditEnd}
+                />
+              </div>
 
               {/* Navigation Controls */}
-              {state.generatedImages.length > 1 && (
-                <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4">
+              {state.generatedImages.length > 1 && !state.editMask && (
+                <div className="flex items-center justify-center gap-4 mt-4 py-2">
                   <button
                     onClick={handlePrevious}
                     disabled={currentIndex === 0}
-                    className={`p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-gray-200
+                    className={`p-2.5 bg-white shadow-md rounded-lg border border-gray-200 flex items-center
                       ${
                         currentIndex === 0
                           ? "opacity-50 cursor-not-allowed"
-                          : "hover:bg-white/100 transition-colors"
+                          : "hover:bg-gray-50 text-gray-700"
                       }`}
+                    title="Previous Image"
                   >
-                    <ChevronLeft size={24} />
+                    <ChevronLeft size={20} strokeWidth={2} />
                   </button>
+
+                  <div className="px-4 py-1.5 bg-gray-100 text-gray-700 rounded-full shadow-sm">
+                    <span className="text-sm font-medium">
+                      {currentIndex + 1} of {state.generatedImages.length}
+                    </span>
+                  </div>
+
                   <button
                     onClick={handleNext}
                     disabled={currentIndex === state.generatedImages.length - 1}
-                    className={`p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-gray-200
+                    className={`p-2.5 bg-white shadow-md rounded-lg border border-gray-200 flex items-center
                       ${
                         currentIndex === state.generatedImages.length - 1
                           ? "opacity-50 cursor-not-allowed"
-                          : "hover:bg-white/100 transition-colors"
+                          : "hover:bg-gray-50 text-gray-700"
                       }`}
+                    title="Next Image"
                   >
-                    <ChevronRight size={24} />
+                    <ChevronRight size={20} strokeWidth={2} />
                   </button>
                 </div>
               )}
             </div>
           ) : (
             // Grid View
-            <div className="grid grid-cols-2 gap-4 h-full">
+            <div className="flex-1 grid grid-cols-2 gap-4">
               {state.generatedImages.slice(0, 4).map((image) => (
                 <div
                   key={image.id}
