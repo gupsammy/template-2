@@ -1,14 +1,17 @@
 import { useRef } from "react";
 import { ImageEditorState } from "@/types/image-editor";
-import { generateImage } from "@/lib/api";
-import { GENERATION_MODELS } from "@/lib/models";
 
 interface ActionButtonsProps {
   state: ImageEditorState;
   setState: React.Dispatch<React.SetStateAction<ImageEditorState>>;
+  uploadOnly?: boolean;
 }
 
-export default function ActionButtons({ state, setState }: ActionButtonsProps) {
+export default function ActionButtons({
+  state,
+  setState,
+  uploadOnly = false,
+}: ActionButtonsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,52 +36,6 @@ export default function ActionButtons({ state, setState }: ActionButtonsProps) {
     reader.readAsDataURL(file);
   };
 
-  const handleGenerate = async () => {
-    if (!state.selectedModel) return;
-
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
-
-    try {
-      const result = await generateImage({
-        modelId: state.selectedModel.id,
-        parameters: {
-          ...state.parameters,
-          mask: state.editMask,
-          image: state.currentImage?.url,
-        },
-      });
-
-      // Create array of new images from URLs
-      const newImages = result.urls.map((url, index) => ({
-        id: `${Date.now()}-${index}`,
-        url,
-        prompt: state.parameters?.prompt,
-        timestamp: Date.now(),
-        modelId: state.selectedModel!.id,
-        parameters: state.parameters,
-      }));
-
-      // Update state with all generated images
-      setState((prev) => ({
-        ...prev,
-        currentImage: newImages[0],
-        generatedImages: newImages,
-        history: [...newImages, ...prev.history],
-        isLoading: false,
-        editMask: null,
-        selectedModel: state.editMask
-          ? GENERATION_MODELS[0]
-          : prev.selectedModel,
-      }));
-    } catch (error) {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: "Failed to generate image",
-      }));
-    }
-  };
-
   const handleDownload = () => {
     if (!state.currentImage?.url) return;
     const link = document.createElement("a");
@@ -90,7 +47,7 @@ export default function ActionButtons({ state, setState }: ActionButtonsProps) {
   };
 
   return (
-    <>
+    <div className="flex gap-2">
       <input
         type="file"
         ref={fileInputRef}
@@ -100,51 +57,19 @@ export default function ActionButtons({ state, setState }: ActionButtonsProps) {
       />
       <button
         onClick={() => fileInputRef.current?.click()}
-        className="px-4 py-2 text-gray-900 bg-white border rounded-lg hover:bg-gray-50"
+        className="px-4 py-2 text-gray-900 bg-white border rounded-lg hover:bg-gray-50 flex-1"
       >
         Upload Image
       </button>
 
-      {state.editMask ? (
-        <>
-          <button
-            onClick={() => {
-              setState((prev) => ({
-                ...prev,
-                editMask: null,
-                selectedModel: GENERATION_MODELS[0],
-              }));
-            }}
-            className="px-4 py-2 text-gray-900 bg-white border rounded-lg hover:bg-gray-50"
-          >
-            Cancel Edit
-          </button>
-          <button
-            onClick={handleGenerate}
-            disabled={state.isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {state.isLoading ? "Processing..." : "Apply Edit"}
-          </button>
-        </>
-      ) : (
-        <button
-          onClick={handleGenerate}
-          disabled={state.isLoading || !state.selectedModel}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {state.isLoading ? "Generating..." : "Generate"}
-        </button>
-      )}
-
-      {state.currentImage && (
+      {!uploadOnly && state.currentImage && (
         <button
           onClick={handleDownload}
-          className="px-4 py-2 text-gray-900 bg-white border rounded-lg hover:bg-gray-50"
+          className="px-4 py-2 text-gray-900 bg-white border rounded-lg hover:bg-gray-50 flex-1"
         >
           Download
         </button>
       )}
-    </>
+    </div>
   );
 }

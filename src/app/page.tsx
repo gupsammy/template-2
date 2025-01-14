@@ -13,11 +13,12 @@ import ActionButtons from "@/components/ActionButtons";
 import ModelSelector from "@/components/ModelSelector";
 import DynamicForm from "@/components/DynamicForm";
 import { GENERATION_MODELS, EDITING_MODELS } from "@/lib/models";
+import { generateImage } from "@/lib/api";
 
 export default function ImageEditor() {
   const [state, setState] = useState<ImageEditorState>({
     currentImage: null,
-    generatedImages: [], // Add this array to store multiple generated images
+    generatedImages: [],
     editMask: null,
     selectedModel: null,
     history: [],
@@ -39,6 +40,58 @@ export default function ImageEditor() {
     setState((prev) => ({ ...prev, parameters: newFormData }));
   };
 
+  const handleGenerate = async () => {
+    if (!state.selectedModel) return;
+
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const result = await generateImage({
+        modelId: state.selectedModel.id,
+        parameters: {
+          ...state.parameters,
+          mask: state.editMask,
+          image: state.currentImage?.url,
+        },
+      });
+
+      const newImages = result.urls.map((url, index) => ({
+        id: `${Date.now()}-${index}`,
+        url,
+        prompt: state.parameters?.prompt,
+        timestamp: Date.now(),
+        modelId: state.selectedModel!.id,
+        parameters: state.parameters,
+      }));
+
+      setState((prev) => ({
+        ...prev,
+        currentImage: newImages[0],
+        generatedImages: newImages,
+        history: [...newImages, ...prev.history],
+        isLoading: false,
+        editMask: null,
+        selectedModel: state.editMask
+          ? GENERATION_MODELS[0]
+          : prev.selectedModel,
+      }));
+    } catch (error) {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: "Failed to generate image",
+      }));
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setState((prev) => ({
+      ...prev,
+      editMask: null,
+      selectedModel: GENERATION_MODELS[0],
+    }));
+  };
+
   // Get basic and advanced parameters
   const basicParams =
     state.selectedModel?.parameters.filter((p) => p.name === "prompt") || [];
@@ -56,7 +109,8 @@ export default function ImageEditor() {
           <div className="h-full overflow-y-auto p-6 text-gray-900">
             <h2 className="text-xl font-semibold mb-6">Image Editor</h2>
             <div className="space-y-6">
-              <ActionButtons state={state} setState={setState} />
+              {/* Upload Button Only */}
+              <ActionButtons state={state} setState={setState} uploadOnly />
 
               <ModelSelector
                 models={state.editMask ? EDITING_MODELS : GENERATION_MODELS}
@@ -73,20 +127,32 @@ export default function ImageEditor() {
                     onChange={handleFormChange}
                   />
 
-                  {/* Generate/Edit Button */}
-                  <button
-                    onClick={() => {
-                      /* handle generate/edit */
-                    }}
-                    disabled={state.isLoading}
-                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {state.isLoading
-                      ? "Processing..."
-                      : state.editMask
-                      ? "Apply Edit"
-                      : "Generate"}
-                  </button>
+                  {/* Generate/Edit Buttons */}
+                  {state.editMask ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleCancelEdit}
+                        className="flex-1 px-4 py-2 text-gray-900 bg-white border rounded-lg hover:bg-gray-50"
+                      >
+                        Cancel Edit
+                      </button>
+                      <button
+                        onClick={handleGenerate}
+                        disabled={state.isLoading}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {state.isLoading ? "Processing..." : "Apply Edit"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleGenerate}
+                      disabled={state.isLoading || !state.selectedModel}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {state.isLoading ? "Generating..." : "Generate"}
+                    </button>
+                  )}
 
                   {/* Advanced Settings Toggle */}
                   <div className="pt-4">

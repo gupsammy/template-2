@@ -38,6 +38,10 @@ export default function ImageWorkspace({
   };
 
   const handleImageSelect = (image: ImageData) => {
+    const index = state.generatedImages.findIndex((img) => img.id === image.id);
+    if (index !== -1) {
+      setCurrentIndex(index);
+    }
     setState((prev) => ({
       ...prev,
       currentImage: image,
@@ -78,12 +82,18 @@ export default function ImageWorkspace({
           {/* View Mode Toggle */}
           <button
             onClick={toggleViewMode}
-            className="absolute top-4 right-4 z-10 p-2 bg-white rounded-lg shadow hover:bg-gray-50"
+            className="absolute top-4 right-4 z-10 p-2.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white/100 transition-colors border border-gray-200 flex items-center gap-2"
           >
             {state.viewMode === "single" ? (
-              <Grid size={20} />
+              <>
+                <Grid size={18} />
+                <span className="text-sm font-medium">Grid View</span>
+              </>
             ) : (
-              <Maximize size={20} />
+              <>
+                <Maximize size={18} />
+                <span className="text-sm font-medium">Single View</span>
+              </>
             )}
           </button>
 
@@ -101,15 +111,15 @@ export default function ImageWorkspace({
 
               {/* Navigation Controls */}
               {state.generatedImages.length > 1 && (
-                <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none">
+                <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4">
                   <button
                     onClick={handlePrevious}
                     disabled={currentIndex === 0}
-                    className={`p-2 bg-white rounded-full shadow pointer-events-auto
+                    className={`p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-gray-200
                       ${
                         currentIndex === 0
                           ? "opacity-50 cursor-not-allowed"
-                          : "hover:bg-gray-50"
+                          : "hover:bg-white/100 transition-colors"
                       }`}
                   >
                     <ChevronLeft size={24} />
@@ -117,11 +127,11 @@ export default function ImageWorkspace({
                   <button
                     onClick={handleNext}
                     disabled={currentIndex === state.generatedImages.length - 1}
-                    className={`p-2 bg-white rounded-full shadow pointer-events-auto
+                    className={`p-3 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-gray-200
                       ${
                         currentIndex === state.generatedImages.length - 1
                           ? "opacity-50 cursor-not-allowed"
-                          : "hover:bg-gray-50"
+                          : "hover:bg-white/100 transition-colors"
                       }`}
                   >
                     <ChevronRight size={24} />
@@ -135,7 +145,7 @@ export default function ImageWorkspace({
               {state.generatedImages.slice(0, 4).map((image) => (
                 <div
                   key={image.id}
-                  className={`relative aspect-square cursor-pointer 
+                  className={`relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-gray-200
                     ${
                       image.id === state.currentImage?.id
                         ? "ring-2 ring-blue-500"
@@ -146,7 +156,7 @@ export default function ImageWorkspace({
                   <img
                     src={image.url}
                     alt={image.prompt || "Generated image"}
-                    className="w-full h-full object-cover rounded-lg"
+                    className="w-full h-full object-cover"
                   />
                 </div>
               ))}
