@@ -22,6 +22,10 @@ export async function POST(req: Request) {
       if (parameters.mask && typeof parameters.mask === "object") {
         const { x, y, width, height, imageWidth, imageHeight } =
           parameters.mask;
+        console.log("API Mask Data:", {
+          mask: { x, y, width, height },
+          image: { width: imageWidth, height: imageHeight },
+        });
 
         // Create a canvas with the image dimensions
         const canvas = createCanvas(imageWidth, imageHeight);

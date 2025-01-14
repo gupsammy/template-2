@@ -24,12 +24,11 @@ export default function ImagePreview({
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(
     null
   );
-  const [zoom, setZoom] = useState(1);
-  const [maskPreview, setMaskPreview] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<{
     width: number;
     height: number;
   } | null>(null);
+  const [maskPreview, setMaskPreview] = useState<string | null>(null);
 
   // Update image size when image loads
   useEffect(() => {
@@ -43,7 +42,6 @@ export default function ImagePreview({
       });
     };
 
-    // Wait for image to load to get natural dimensions
     if (img.complete) {
       updateImageSize();
     } else {
@@ -52,9 +50,62 @@ export default function ImagePreview({
     return () => img.removeEventListener("load", updateImageSize);
   }, [image.url]);
 
+  // Get coordinates relative to image
+  const getImageCoordinates = (
+    e: React.MouseEvent
+  ): { x: number; y: number } | null => {
+    // Add debugging logs
+    const img = imageRef.current;
+    if (!img || !imageSize) return null;
+
+    const rect = img.getBoundingClientRect();
+
+    // Get click coordinates relative to image display size
+    // Account for padding and borders
+    const style = window.getComputedStyle(img);
+    const paddingLeft = parseFloat(style.paddingLeft);
+    const paddingTop = parseFloat(style.paddingTop);
+    const borderLeft = parseFloat(style.borderLeftWidth);
+    const borderTop = parseFloat(style.borderTopWidth);
+
+    let x = e.clientX - rect.left - (paddingLeft + borderLeft);
+    let y = e.clientY - rect.top - (paddingTop + borderTop);
+
+    // Convert to natural image coordinates
+    const scaleX = imageSize.width / rect.width;
+    const scaleY = imageSize.height / rect.height;
+
+    x = Math.round(x * scaleX);
+    y = Math.round(y * scaleY);
+
+    // Ensure coordinates are within image bounds
+    if (x < 0 || x > imageSize.width || y < 0 || y > imageSize.height) {
+      return null;
+    }
+
+    // Log coordinates for debugging
+    console.log("Mouse Coordinates:", {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      rect: {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      },
+      calculated: { x, y },
+      imageNaturalSize: {
+        width: imageSize.width,
+        height: imageSize.height,
+      },
+    });
+
+    return { x, y };
+  };
+
   // Create mask preview
   useEffect(() => {
-    if (!mask || !imageRef.current || !imageSize) {
+    if (!mask || !imageSize) {
       setMaskPreview(null);
       return;
     }
@@ -63,50 +114,25 @@ export default function ImagePreview({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size to match original image dimensions
     canvas.width = imageSize.width;
     canvas.height = imageSize.height;
 
-    // Draw black background
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw white mask
     ctx.fillStyle = "white";
-    ctx.fillRect(mask.x, mask.y, mask.width, mask.height);
+    ctx.fillRect(
+      Math.max(0, Math.min(mask.x, imageSize.width)),
+      Math.max(0, Math.min(mask.y, imageSize.height)),
+      Math.min(mask.width, imageSize.width - mask.x),
+      Math.min(mask.height, imageSize.height - mask.y)
+    );
 
     setMaskPreview(canvas.toDataURL());
   }, [mask, imageSize]);
 
-  // Get coordinates relative to image
-  const getImageCoordinates = (e: React.MouseEvent) => {
-    const img = imageRef.current;
-    if (!img || !imageSize) return null;
-
-    const rect = img.getBoundingClientRect();
-    const scaleX = imageSize.width / rect.width;
-    const scaleY = imageSize.height / rect.height;
-
-    // Calculate coordinates relative to the image's natural dimensions
-    let x = ((e.clientX - rect.left) * scaleX) / zoom;
-    let y = ((e.clientY - rect.top) * scaleY) / zoom;
-
-    // Constrain coordinates to image boundaries
-    x = Math.max(0, Math.min(x, imageSize.width));
-    y = Math.max(0, Math.min(y, imageSize.height));
-
-    // Check if point is inside image
-    if (x < 0 || x > imageSize.width || y < 0 || y > imageSize.height) {
-      return null;
-    }
-
-    return { x, y };
-  };
-
-  // Handle mouse events for drawing mask
   const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent image dragging
-
+    e.preventDefault();
     const coords = getImageCoordinates(e);
     if (!coords) return;
 
@@ -116,25 +142,45 @@ export default function ImagePreview({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Log mask creation
     if (!isDragging || !startPoint || !imageSize) return;
 
     const coords = getImageCoordinates(e);
     if (!coords) return;
 
-    // Constrain coordinates to image boundaries
-    const x = Math.max(0, Math.min(coords.x, imageSize.width));
-    const y = Math.max(0, Math.min(coords.y, imageSize.height));
+    // Calculate mask dimensions
+    const x = Math.max(
+      0,
+      Math.min(Math.min(startPoint.x, coords.x), imageSize.width)
+    );
+    const y = Math.max(
+      0,
+      Math.min(Math.min(startPoint.y, coords.y), imageSize.height)
+    );
+    const width = Math.min(
+      Math.abs(coords.x - startPoint.x),
+      imageSize.width - x
+    );
+    const height = Math.min(
+      Math.abs(coords.y - startPoint.y),
+      imageSize.height - y
+    );
 
-    const maskData: MaskData = {
-      x: Math.min(startPoint.x, x),
-      y: Math.min(startPoint.y, y),
-      width: Math.abs(x - startPoint.x),
-      height: Math.abs(y - startPoint.y),
-    };
+    // Update mask with image dimensions
+    // Log mask dimensions before updating
+    console.log("Creating Mask:", {
+      x,
+      y,
+      width,
+      height,
+      imageSize,
+    });
 
-    // Include image dimensions with the mask data
     onMaskChange({
-      ...maskData,
+      x,
+      y,
+      width,
+      height,
       imageWidth: imageSize.width,
       imageHeight: imageSize.height,
     });
@@ -147,112 +193,51 @@ export default function ImagePreview({
 
   const handleClick = (e: React.MouseEvent) => {
     const coords = getImageCoordinates(e);
+    if (!coords || !mask || isDragging) return;
 
-    // If clicking outside image, clear mask
-    if (!coords) {
-      if (mask) {
-        onEditEnd();
-        onMaskChange(null);
-      }
-      return;
-    }
+    const isInsideMask =
+      coords.x >= mask.x &&
+      coords.x <= mask.x + mask.width &&
+      coords.y >= mask.y &&
+      coords.y <= mask.y + mask.height;
 
-    // Only clear mask if clicking outside the mask area but inside image
-    if (mask && !isDragging) {
-      const isInsideMask =
-        coords.x >= mask.x &&
-        coords.x <= mask.x + mask.width &&
-        coords.y >= mask.y &&
-        coords.y <= mask.y + mask.height;
-
-      if (!isInsideMask) {
-        onEditEnd();
-        onMaskChange(null);
-      }
+    if (!isInsideMask) {
+      onEditEnd();
+      onMaskChange(null);
     }
   };
-
-  // Handle zoom
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      setZoom((prev) => Math.min(Math.max(prev * delta, 0.1), 5));
-    }
-  };
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    container.addEventListener("wheel", handleWheel as any, { passive: false });
-    return () => {
-      container.removeEventListener("wheel", handleWheel as any);
-    };
-  }, []);
 
   return (
     <div className="relative flex-1 h-full">
-      {/* Main Image Preview */}
       <div
         ref={containerRef}
         className="relative w-full h-full overflow-hidden bg-gray-100 rounded-lg flex items-center justify-center"
       >
-        <div
-          className="relative transition-transform duration-200 ease-in-out"
-          style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: "center",
-          }}
-        >
-          <div className="relative">
-            <img
-              ref={imageRef}
-              src={image.url}
-              alt={image.prompt || "Generated image"}
-              className="max-w-full max-h-[calc(100vh-16rem)] object-contain select-none"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onClick={handleClick}
-              draggable={false}
+        <div className="relative">
+          <img
+            ref={imageRef}
+            src={image.url}
+            alt={image.prompt || "Generated image"}
+            className="max-w-full max-h-[calc(100vh-16rem)] object-contain select-none"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onClick={handleClick}
+            draggable={false}
+          />
+
+          {mask && imageSize && (
+            <div
+              className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
+              style={{
+                left: `${(mask.x / imageSize.width) * 100}%`,
+                top: `${(mask.y / imageSize.height) * 100}%`,
+                width: `${(mask.width / imageSize.width) * 100}%`,
+                height: `${(mask.height / imageSize.height) * 100}%`,
+              }}
             />
-
-            {mask && imageSize && (
-              <div
-                className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
-                style={{
-                  left: `${mask.x}px`,
-                  top: `${mask.y}px`,
-                  width: `${mask.width}px`,
-                  height: `${mask.height}px`,
-                }}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Zoom controls */}
-        <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-2 space-x-2">
-          <button
-            onClick={() => setZoom((prev) => Math.min(prev * 1.1, 5))}
-            className="p-2 hover:bg-gray-100 rounded text-gray-900"
-          >
-            +
-          </button>
-          <button
-            onClick={() => setZoom((prev) => Math.max(prev * 0.9, 0.1))}
-            className="p-2 hover:bg-gray-100 rounded text-gray-900"
-          >
-            -
-          </button>
-          <button
-            onClick={() => setZoom(1)}
-            className="p-2 hover:bg-gray-100 rounded text-gray-900"
-          >
-            Reset
-          </button>
+          )}
         </div>
       </div>
 
