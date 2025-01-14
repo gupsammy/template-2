@@ -73,6 +73,18 @@ class ImageDatabase {
       request.onsuccess = () => resolve(request.result || null);
     });
   }
+
+  async deleteImage(id: string): Promise<void> {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.STORE_NAME], "readwrite");
+      const store = transaction.objectStore(this.STORE_NAME);
+      const request = store.delete(id);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
 }
 
 export const imageDb = new ImageDatabase();

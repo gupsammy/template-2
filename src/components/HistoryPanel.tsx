@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { StoredImage } from "@/lib/db";
-import { Download, Info } from "lucide-react";
+import { StoredImage, imageDb } from "@/lib/db";
+import { Download, Info, Trash2 } from "lucide-react";
 import ImageMetadataModal from "./ImageMetadataModal";
 import Image from "next/image";
 
@@ -8,12 +8,14 @@ interface HistoryPanelProps {
   history: StoredImage[];
   onSelectImage: (image: StoredImage) => void;
   className?: string;
+  onImageDeleted?: () => void;
 }
 
 export default function HistoryPanel({
   history,
   onSelectImage,
   className = "",
+  onImageDeleted,
 }: HistoryPanelProps) {
   const [selectedMetadata, setSelectedMetadata] = useState<StoredImage | null>(
     null
@@ -33,6 +35,16 @@ export default function HistoryPanel({
     e.stopPropagation();
     if (image.editType) {
       setSelectedMetadata(image);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, image: StoredImage) => {
+    e.stopPropagation();
+    try {
+      await imageDb.deleteImage(image.id);
+      onImageDeleted?.();
+    } catch (error) {
+      console.error("Failed to delete image:", error);
     }
   };
 
@@ -79,6 +91,12 @@ export default function HistoryPanel({
                       <Info className="w-4 h-4 text-gray-700" />
                     </button>
                   )}
+                  <button
+                    onClick={(e) => handleDelete(e, image)}
+                    className="p-1.5 bg-white/90 hover:bg-white rounded-full shadow-sm"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                  </button>
                   <button
                     onClick={(e) => handleDownload(e, image)}
                     className="p-1.5 bg-white/90 hover:bg-white rounded-full shadow-sm"

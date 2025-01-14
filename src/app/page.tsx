@@ -173,6 +173,19 @@ export default function ImageEditor() {
     }));
   };
 
+  const handleImageDeleted = async () => {
+    try {
+      const storedImages = await imageDb.getAllImages();
+      setState((prev) => ({
+        ...prev,
+        history: storedImages,
+        currentImage: storedImages[0] || null,
+      }));
+    } catch (error) {
+      console.error("Failed to refresh history:", error);
+    }
+  };
+
   // Get basic and advanced parameters
   const basicParams =
     state.selectedModel?.parameters.filter((p) => p.name === "prompt") || [];
@@ -284,6 +297,7 @@ export default function ImageEditor() {
           onSelectImage={(image: ImageData) =>
             setState((prev) => ({ ...prev, currentImage: image }))
           }
+          onImageDeleted={handleImageDeleted}
           className="h-full"
         />
       </div>
