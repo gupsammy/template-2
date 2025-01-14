@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ImageEditorState,
   ViewMode,
@@ -14,6 +14,7 @@ import ModelSelector from "@/components/ModelSelector";
 import DynamicForm from "@/components/DynamicForm";
 import { GENERATION_MODELS, EDITING_MODELS } from "@/lib/models";
 import { generateImage } from "@/lib/api";
+import { imageDb, StoredImage } from "@/lib/db";
 
 export default function ImageEditor() {
   const [state, setState] = useState<ImageEditorState>({
@@ -32,6 +33,23 @@ export default function ImageEditor() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
 
+  // Load history from IndexedDB on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const storedImages = await imageDb.getAllImages();
+        setState((prev) => ({
+          ...prev,
+          history: storedImages,
+          currentImage: storedImages[0] || null,
+        }));
+      } catch (error) {
+        console.error("Failed to load history:", error);
+      }
+    };
+    loadHistory();
+  }, []);
+
   const togglePaintMode = () => {
     setState((prev) => ({
       ...prev,
@@ -46,6 +64,22 @@ export default function ImageEditor() {
   const handleFormChange = (newFormData: Record<string, any>) => {
     setFormData(newFormData);
     setState((prev) => ({ ...prev, parameters: newFormData }));
+  };
+
+  const handleImageUpload = async (file: File) => {
+    const url = URL.createObjectURL(file);
+    const uploadedImage: StoredImage = {
+      id: `upload-${Date.now()}`,
+      url,
+      timestamp: Date.now(),
+      modelId: "upload",
+    };
+
+    setState((prev) => ({
+      ...prev,
+      currentImage: uploadedImage,
+      history: [uploadedImage, ...prev.history],
+    }));
   };
 
   const handleGenerate = async () => {
@@ -68,14 +102,48 @@ export default function ImageEditor() {
         parameters,
       });
 
-      const newImages = result.urls.map((url, index) => ({
-        id: `${Date.now()}-${index}`,
-        url,
-        prompt: state.parameters?.prompt,
-        timestamp: Date.now(),
-        modelId: state.selectedModel!.id,
-        parameters: state.parameters,
-      }));
+      // Create new image records
+      const newImages: StoredImage[] = await Promise.all(
+        result.urls.map(async (url, index) => {
+          const imageData: StoredImage = {
+            id: `${Date.now()}-${index}`,
+            url,
+            prompt: state.parameters?.prompt,
+            timestamp: Date.now(),
+            modelId: state.selectedModel!.id,
+            parameters: state.parameters,
+            editType: state.editMask ? "editing" : "generation",
+          };
+
+          // If this is an edit operation, store the input image and mask
+          if (state.editMask) {
+            imageData.parentImageId = state.currentImage?.id;
+            imageData.inputImage = state.currentImage?.url;
+
+            // Convert mask to image data URL
+            const canvas = document.createElement("canvas");
+            canvas.width = state.editMask.imageWidth;
+            canvas.height = state.editMask.imageHeight;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.fillStyle = "black";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.fillStyle = "white";
+              ctx.fillRect(
+                state.editMask.x,
+                state.editMask.y,
+                state.editMask.width,
+                state.editMask.height
+              );
+              imageData.maskImage = canvas.toDataURL();
+            }
+          }
+
+          // Store in IndexedDB
+          await imageDb.addImage(imageData);
+          return imageData;
+        })
+      );
 
       setState((prev) => ({
         ...prev,

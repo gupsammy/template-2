@@ -1,9 +1,12 @@
-import { ImageData } from "@/types/image-editor";
-import { Download } from "lucide-react";
+import { useState } from "react";
+import { StoredImage } from "@/lib/db";
+import { Download, Info } from "lucide-react";
+import ImageMetadataModal from "./ImageMetadataModal";
+import Image from "next/image";
 
 interface HistoryPanelProps {
-  history: ImageData[];
-  onSelectImage: (image: ImageData) => void;
+  history: StoredImage[];
+  onSelectImage: (image: StoredImage) => void;
   className?: string;
 }
 
@@ -12,7 +15,11 @@ export default function HistoryPanel({
   onSelectImage,
   className = "",
 }: HistoryPanelProps) {
-  const handleDownload = (e: React.MouseEvent, image: ImageData) => {
+  const [selectedMetadata, setSelectedMetadata] = useState<StoredImage | null>(
+    null
+  );
+
+  const handleDownload = (e: React.MouseEvent, image: StoredImage) => {
     e.stopPropagation();
     const link = document.createElement("a");
     link.href = image.url;
@@ -20,6 +27,13 @@ export default function HistoryPanel({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleInfoClick = (e: React.MouseEvent, image: StoredImage) => {
+    e.stopPropagation();
+    if (image.editType) {
+      setSelectedMetadata(image);
+    }
   };
 
   return (
@@ -48,27 +62,42 @@ export default function HistoryPanel({
                   onClick={() => onSelectImage(image)}
                   className="relative aspect-square h-full overflow-hidden rounded-lg border hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <img
+                  <Image
                     src={image.url}
                     alt={image.prompt || "Generated image"}
-                    className="h-full w-full object-cover"
+                    width={200}
+                    height={200}
+                    className="object-cover w-full h-full"
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-
-                  {/* Download Button Overlay */}
+                </button>
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                  {image.editType && (
+                    <button
+                      onClick={(e) => handleInfoClick(e, image)}
+                      className="p-1.5 bg-white/90 hover:bg-white rounded-full shadow-sm"
+                    >
+                      <Info className="w-4 h-4 text-gray-700" />
+                    </button>
+                  )}
                   <button
                     onClick={(e) => handleDownload(e, image)}
-                    className="absolute top-2 right-2 p-2 bg-white shadow-md rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-50"
-                    title="Download Image"
+                    className="p-1.5 bg-white/90 hover:bg-white rounded-full shadow-sm"
                   >
-                    <Download className="text-gray-700" size={16} />
+                    <Download className="w-4 h-4 text-gray-700" />
                   </button>
-                </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {selectedMetadata && (
+        <ImageMetadataModal
+          image={selectedMetadata}
+          onClose={() => setSelectedMetadata(null)}
+        />
+      )}
     </div>
   );
 }
