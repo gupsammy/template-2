@@ -1,47 +1,144 @@
-import Link from "next/link";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import {
+  ImageEditorState,
+  ViewMode,
+  ImageData,
+  ModelConfig,
+} from "@/types/image-editor";
+import ImageWorkspace from "@/components/ImageWorkspace";
+import HistoryPanel from "@/components/HistoryPanel";
+import ActionButtons from "@/components/ActionButtons";
+import ModelSelector from "@/components/ModelSelector";
+import DynamicForm from "@/components/DynamicForm";
+import { GENERATION_MODELS, EDITING_MODELS } from "@/lib/models";
+
+export default function ImageEditor() {
+  const [state, setState] = useState<ImageEditorState>({
+    currentImage: null,
+    generatedImages: [],
+    editMask: null,
+    selectedModel: null,
+    history: [],
+    viewMode: "single",
+    isLoading: false,
+    error: null,
+    parameters: {},
+  });
+
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+
+  const handleModelSelect = (model: ModelConfig) => {
+    setState((prev) => ({ ...prev, selectedModel: model }));
+  };
+
+  const handleFormChange = (newFormData: Record<string, any>) => {
+    setFormData(newFormData);
+    setState((prev) => ({ ...prev, parameters: newFormData }));
+  };
+
+  // Get basic and advanced parameters
+  const basicParams =
+    state.selectedModel?.parameters.filter((p) => p.name === "prompt") || [];
+  const advancedParams =
+    state.selectedModel?.parameters.filter((p) => p.name !== "prompt") || [];
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-8">
-      <div>
-        <h2 className="text-2xl font-semibold text-center border p-4 font-mono rounded-md">
-          Get started by choosing a template path from the /paths/ folder.
-        </h2>
+    <main className="flex flex-col h-screen overflow-hidden bg-gray-50">
+      {/* Main Content */}
+      <div className="flex-1 flex min-h-0">
+        <div className="flex-1">
+          <ImageWorkspace state={state} setState={setState} />
+        </div>
+        <div className="w-96 bg-white border-l">
+          <div className="h-full overflow-y-auto p-6 text-gray-900">
+            <h2 className="text-xl font-semibold mb-6">Image Editor</h2>
+            <div className="space-y-6">
+              <ActionButtons state={state} setState={setState} />
+
+              <ModelSelector
+                models={state.editMask ? EDITING_MODELS : GENERATION_MODELS}
+                selectedModel={state.selectedModel}
+                onSelect={handleModelSelect}
+              />
+
+              {state.selectedModel && (
+                <>
+                  {/* Basic Parameters (Prompt) */}
+                  <DynamicForm
+                    parameters={basicParams}
+                    values={formData}
+                    onChange={handleFormChange}
+                  />
+
+                  {/* Generate/Edit Button */}
+                  <button
+                    onClick={() => {
+                      /* handle generate/edit */
+                    }}
+                    disabled={state.isLoading}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {state.isLoading
+                      ? "Processing..."
+                      : state.editMask
+                      ? "Apply Edit"
+                      : "Generate"}
+                  </button>
+
+                  {/* Advanced Settings Toggle */}
+                  <div className="pt-4">
+                    <button
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center justify-between w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
+                    >
+                      <span>Advanced Settings</span>
+                      <svg
+                        className={`w-5 h-5 transition-transform ${
+                          showAdvanced ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Advanced Parameters */}
+                  {showAdvanced && (
+                    <div className="pt-4">
+                      <DynamicForm
+                        parameters={advancedParams}
+                        values={formData}
+                        onChange={handleFormChange}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-      <div>
-        <h1 className="text-6xl font-bold text-center">Make anything you imagine 🪄</h1>
-        <h2 className="text-2xl text-center font-light text-gray-500 pt-4">
-          This whole page will be replaced when you run your template path.
-        </h2>
-      </div>
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="border rounded-lg p-6 hover:bg-gray-100 transition-colors">
-          <h3 className="text-xl font-semibold">AI Chat App</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            An intelligent conversational app powered by AI models, featuring real-time responses
-            and seamless integration with Next.js and various AI providers.
-          </p>
-        </div>
-        <div className="border rounded-lg p-6 hover:bg-gray-100 transition-colors">
-          <h3 className="text-xl font-semibold">AI Image Generation App</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            Create images from text prompts using AI, powered by the Replicate API and Next.js.
-          </p>
-        </div>
-        <div className="border rounded-lg p-6 hover:bg-gray-100 transition-colors">
-          <h3 className="text-xl font-semibold">Social Media App</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            A feature-rich social platform with user profiles, posts, and interactions using
-            Firebase and Next.js.
-          </p>
-        </div>
-        <div className="border rounded-lg p-6 hover:bg-gray-100 transition-colors">
-          <h3 className="text-xl font-semibold">Voice Notes App</h3>
-          <p className="mt-2 text-sm text-gray-600">
-            A voice-based note-taking app with real-time transcription using Deepgram API, 
-            Firebase integration for storage, and a clean, simple interface built with Next.js.
-          </p>
-        </div>
+
+      {/* History Panel */}
+      <div className="h-48 border-t bg-white">
+        <HistoryPanel
+          history={state.history}
+          onSelectImage={(image: ImageData) =>
+            setState((prev) => ({ ...prev, currentImage: image }))
+          }
+          className="h-full"
+        />
       </div>
     </main>
   );
