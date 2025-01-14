@@ -4,8 +4,7 @@ interface GenerateImageParams {
 }
 
 interface GenerateImageResponse {
-  id: string;
-  url: string;
+  urls: string[];
 }
 
 export async function generateImage({
@@ -27,9 +26,5 @@ export async function generateImage({
     throw new Error("Failed to generate image");
   }
 
-  const data = await response.json();
-  return {
-    id: data.id || Date.now().toString(),
-    url: data.url,
-  };
+  return await response.json();
 }

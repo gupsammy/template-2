@@ -17,7 +17,7 @@ import { GENERATION_MODELS, EDITING_MODELS } from "@/lib/models";
 export default function ImageEditor() {
   const [state, setState] = useState<ImageEditorState>({
     currentImage: null,
-    generatedImages: [],
+    generatedImages: [], // Add this array to store multiple generated images
     editMask: null,
     selectedModel: null,
     history: [],

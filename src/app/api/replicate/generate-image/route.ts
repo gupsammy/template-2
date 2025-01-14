@@ -66,10 +66,10 @@ export async function POST(req: Request) {
 
     const output = await replicate.run(modelId, { input });
 
-    // Handle different output formats
-    const url = Array.isArray(output) ? output[0] : output;
+    // Handle array output (multiple images)
+    const urls = Array.isArray(output) ? output : [output];
 
-    return NextResponse.json({ url });
+    return NextResponse.json({ urls });
   } catch (error) {
     console.error("Error generating image:", error);
     console.error(

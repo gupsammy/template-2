@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { ImageEditorState } from "@/types/image-editor";
 import { generateImage } from "@/lib/api";
+import { GENERATION_MODELS } from "@/lib/models";
 
 interface ActionButtonsProps {
   state: ImageEditorState;
@@ -25,6 +26,7 @@ export default function ActionButtons({ state, setState }: ActionButtonsProps) {
       setState((prev) => ({
         ...prev,
         currentImage: newImage,
+        generatedImages: [newImage],
         history: [newImage, ...prev.history],
       }));
     };
@@ -46,21 +48,27 @@ export default function ActionButtons({ state, setState }: ActionButtonsProps) {
         },
       });
 
-      const newImage = {
-        id: result.id,
-        url: result.url,
+      // Create array of new images from URLs
+      const newImages = result.urls.map((url, index) => ({
+        id: `${Date.now()}-${index}`,
+        url,
         prompt: state.parameters?.prompt,
         timestamp: Date.now(),
-        modelId: state.selectedModel.id,
+        modelId: state.selectedModel!.id,
         parameters: state.parameters,
-      };
+      }));
 
+      // Update state with all generated images
       setState((prev) => ({
         ...prev,
-        currentImage: newImage,
-        history: [newImage, ...prev.history],
+        currentImage: newImages[0],
+        generatedImages: newImages,
+        history: [...newImages, ...prev.history],
         isLoading: false,
         editMask: null,
+        selectedModel: state.editMask
+          ? GENERATION_MODELS[0]
+          : prev.selectedModel,
       }));
     } catch (error) {
       setState((prev) => ({
@@ -100,7 +108,13 @@ export default function ActionButtons({ state, setState }: ActionButtonsProps) {
       {state.editMask ? (
         <>
           <button
-            onClick={() => setState((prev) => ({ ...prev, editMask: null }))}
+            onClick={() => {
+              setState((prev) => ({
+                ...prev,
+                editMask: null,
+                selectedModel: GENERATION_MODELS[0],
+              }));
+            }}
             className="px-4 py-2 text-gray-900 bg-white border rounded-lg hover:bg-gray-50"
           >
             Cancel Edit
