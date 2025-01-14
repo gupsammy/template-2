@@ -41,6 +41,7 @@ export interface HistoryItem extends ImageData {
 }
 
 export type ViewMode = "single" | "grid";
+export type PaintMode = "inpaint" | "outpaint";
 
 export interface ImageEditorState {
   currentImage: ImageData | null;
@@ -49,6 +50,7 @@ export interface ImageEditorState {
   selectedModel: ModelConfig | null;
   history: HistoryItem[];
   viewMode: ViewMode;
+  paintMode: PaintMode;
   isLoading: boolean;
   error: string | null;
   parameters: Record<string, any>;

@@ -8,6 +8,8 @@ import {
   LayoutGrid,
   Maximize2,
   Download,
+  Brush,
+  Eraser,
 } from "lucide-react";
 
 interface ImageWorkspaceProps {
@@ -101,7 +103,7 @@ export default function ImageWorkspace({
       {state.currentImage ? (
         <div className="relative flex-1 min-h-0 flex flex-col">
           {/* View Mode Toggle and Download */}
-          {!state.editMask && (
+          {!state.editMask ? (
             <div className="flex justify-end gap-2 mb-4">
               {/* Download Button */}
               <button
@@ -136,6 +138,37 @@ export default function ImageWorkspace({
                 )}
               </button>
             </div>
+          ) : (
+            <div className="flex justify-end gap-2 mb-4">
+              {/* Paint Mode Toggle */}
+              <button
+                onClick={() =>
+                  setState((prev) => ({
+                    ...prev,
+                    paintMode:
+                      prev.paintMode === "inpaint" ? "outpaint" : "inpaint",
+                  }))
+                }
+                className="p-2.5 bg-white shadow-md rounded-lg hover:bg-gray-50 transition-colors border border-gray-200 flex items-center gap-2 text-gray-700"
+                title={
+                  state.paintMode === "inpaint"
+                    ? "Switch to Outpainting"
+                    : "Switch to Inpainting"
+                }
+              >
+                {state.paintMode === "inpaint" ? (
+                  <>
+                    <Brush size={18} className="text-gray-700" />
+                    <span className="text-sm font-medium">Inpainting</span>
+                  </>
+                ) : (
+                  <>
+                    <Eraser size={18} className="text-gray-700" />
+                    <span className="text-sm font-medium">Outpainting</span>
+                  </>
+                )}
+              </button>
+            </div>
           )}
 
           {state.viewMode === "single" ? (
@@ -146,6 +179,7 @@ export default function ImageWorkspace({
                   mask={state.editMask}
                   onMaskChange={handleMaskChange}
                   viewMode={state.viewMode}
+                  paintMode={state.paintMode}
                   onEditStart={handleEditStart}
                   onEditEnd={handleEditEnd}
                 />

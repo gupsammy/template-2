@@ -31,12 +31,22 @@ export async function POST(req: Request) {
         const canvas = createCanvas(imageWidth, imageHeight);
         const ctx = canvas.getContext("2d");
 
-        // Draw black background
-        ctx.fillStyle = "black";
+        // Handle mask colors based on model and mode
+        const isIdeogramModel = modelId.includes("ideogram-ai");
+        const isOutpaintMode = parameters.paintMode === "outpaint";
+
+        // For Ideogram models: invert colors only in inpainting mode
+        // For other models: invert colors in outpainting mode
+        const shouldInvertMask = isIdeogramModel
+          ? parameters.paintMode === "inpaint" // Ideogram: invert for inpaint
+          : parameters.paintMode === "outpaint"; // Others: invert for outpaint
+
+        // Set background color
+        ctx.fillStyle = shouldInvertMask ? "white" : "black";
         ctx.fillRect(0, 0, imageWidth, imageHeight);
 
-        // Draw white rectangle for mask
-        ctx.fillStyle = "white";
+        // Set mask color (opposite of background)
+        ctx.fillStyle = shouldInvertMask ? "black" : "white";
         ctx.fillRect(x, y, width, height);
 
         // Convert to base64
@@ -52,6 +62,7 @@ export async function POST(req: Request) {
         delete input.mask.height;
         delete input.mask.imageWidth;
         delete input.mask.imageHeight;
+        delete input.paintMode; // Remove paintMode from input as it's only used for mask processing
       }
     }
 

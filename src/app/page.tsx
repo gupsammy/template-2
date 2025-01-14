@@ -23,6 +23,7 @@ export default function ImageEditor() {
     selectedModel: null,
     history: [],
     viewMode: "single",
+    paintMode: "inpaint",
     isLoading: false,
     error: null,
     parameters: {},
@@ -30,6 +31,13 @@ export default function ImageEditor() {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
+
+  const togglePaintMode = () => {
+    setState((prev) => ({
+      ...prev,
+      paintMode: prev.paintMode === "inpaint" ? "outpaint" : "inpaint",
+    }));
+  };
 
   const handleModelSelect = (model: ModelConfig) => {
     setState((prev) => ({ ...prev, selectedModel: model }));
@@ -46,13 +54,18 @@ export default function ImageEditor() {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const result = await generateImage({
-        modelId: state.selectedModel.id,
-        parameters: {
-          ...state.parameters,
+      const parameters = {
+        ...state.parameters,
+        ...(state.editMask && {
           mask: state.editMask,
           image: state.currentImage?.url,
-        },
+          paintMode: state.paintMode,
+        }),
+      };
+
+      const result = await generateImage({
+        modelId: state.selectedModel.id,
+        parameters,
       });
 
       const newImages = result.urls.map((url, index) => ({

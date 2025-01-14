@@ -1,11 +1,12 @@
 import { useRef, useState, useEffect } from "react";
-import { ImageData, MaskData, ViewMode } from "@/types/image-editor";
+import { ImageData, MaskData, ViewMode, PaintMode } from "@/types/image-editor";
 
 interface ImagePreviewProps {
   image: ImageData;
   mask: MaskData | null;
   onMaskChange: (mask: MaskData | null) => void;
   viewMode: ViewMode;
+  paintMode: PaintMode;
   onEditStart: () => void;
   onEditEnd: () => void;
 }
@@ -15,6 +16,7 @@ export default function ImagePreview({
   mask,
   onMaskChange,
   viewMode,
+  paintMode,
   onEditStart,
   onEditEnd,
 }: ImagePreviewProps) {
@@ -117,10 +119,11 @@ export default function ImagePreview({
     canvas.width = imageSize.width;
     canvas.height = imageSize.height;
 
-    ctx.fillStyle = "black";
+    // Invert colors for outpainting mode
+    ctx.fillStyle = paintMode === "outpaint" ? "white" : "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = "white";
+    ctx.fillStyle = paintMode === "outpaint" ? "black" : "white";
     ctx.fillRect(
       Math.max(0, Math.min(mask.x, imageSize.width)),
       Math.max(0, Math.min(mask.y, imageSize.height)),
@@ -129,7 +132,7 @@ export default function ImagePreview({
     );
 
     setMaskPreview(canvas.toDataURL());
-  }, [mask, imageSize]);
+  }, [mask, imageSize, paintMode]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
