@@ -45,7 +45,10 @@ class ImageDatabase {
       const request = store.put(image);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        this.exportToLocalStorage();
+        resolve();
+      };
     });
   }
 
@@ -84,6 +87,21 @@ class ImageDatabase {
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve();
     });
+  }
+
+  async exportToLocalStorage(): Promise<void> {
+    const images = await this.getAllImages();
+    localStorage.setItem("image-editor-backup", JSON.stringify(images));
+  }
+
+  async importFromLocalStorage(): Promise<void> {
+    const backup = localStorage.getItem("image-editor-backup");
+    if (backup) {
+      const images = JSON.parse(backup) as StoredImage[];
+      for (const image of images) {
+        await this.addImage(image);
+      }
+    }
   }
 }
 

@@ -523,7 +523,7 @@ export const GENERATION_MODELS: ModelConfig[] = [
     ],
   },
   {
-    id: "gupsammy/sammypersonal:54b42ce096ad321d6ed81e387423d2e7d6684542eeb498cc28cc963d766005ef",
+    id: "gupsammy/sammypersonal:ad9c3a8ad32589c7df9497118aea970d31319237b8afe0bf2fce96b1153b884c",
     name: "SMMY Personal",
     type: "generation",
     parameters: [
@@ -1030,7 +1030,7 @@ export const EDITING_MODELS: ModelConfig[] = [
     ],
   },
   {
-    id: "gupsammy/sammypersonal:54b42ce096ad321d6ed81e387423d2e7d6684542eeb498cc28cc963d766005ef",
+    id: "gupsammy/sammypersonal:ad9c3a8ad32589c7df9497118aea970d31319237b8afe0bf2fce96b1153b884c",
     name: "SMMY Personal (Edit)",
     type: "editing",
     parameters: [
